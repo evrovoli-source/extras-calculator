@@ -689,10 +689,11 @@ function renderResult(data, container) {
     html += `<div class="vehicle-badge"><div class="dot"></div>${data.vehicle}</div>`;
   }
 
-  if (data.extras && data.extras.length > 0) {
+  const extras = data.charged_items || data.extras || [];
+  if (extras.length > 0) {
     html += `<table class="extras-table">
       <thead><tr><th>Extra</th><th>Κωδικός</th><th>Αξία</th></tr></thead><tbody>`;
-    data.extras.forEach(e => {
+    extras.forEach(e => {
       html += `<tr>
         <td>${e.name}</td>
         <td class="code-cell">${e.code || '—'}</td>
