@@ -604,10 +604,20 @@ async function runAnalysis() {
 {"vehicle":"μάρκα μοντέλο (κωδικός έκδοσης)","extras":[{"name":"περιγραφή","code":"κωδικός","value":123.45,"note":"σημείωση αν χρειάζεται"}],"packages_used":["κωδικοί πακέτων που χρησιμοποιήθηκαν"],"not_found":["κωδικοί που δεν βρέθηκαν"],"total":0}` }
     ];
 
-    const resp = await fetch('/.netlify/functions/analyze', {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [{ role: 'user', content }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': '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',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
+        system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο ή εξηγήσεις εκτός JSON. Δεν μετράς ποτέ διπλά extras.',
+        messages: [{ role: 'user', content }]
+      })
     });
 
     const d = await resp.json();
