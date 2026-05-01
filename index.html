@@ -613,6 +613,7 @@ async function runAnalysis() {
   body: JSON.stringify({
     model: 'claude-sonnet-4-6',
     max_tokens: 4000,
+    temperature: 0,
     system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο, εξηγήσεις ή σχόλια εκτός JSON. Είσαι πολύ προσεκτικός με τα packages και δεν μετράς ποτέ διπλά.',
     messages: [{ role: 'user', content }]
   })
