@@ -616,8 +616,6 @@ async function runAnalysis() {
     messages: [{ role: 'user', content }]
   })
 });
-const data = await resp.json();
-console.log(data);
     const d = await resp.json();
     if (d.error) throw new Error(d.error.message);
     const text = d.content.map(i => i.text || '').join('');
