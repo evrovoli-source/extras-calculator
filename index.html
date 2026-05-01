@@ -604,18 +604,18 @@ async function runAnalysis() {
 {"vehicle":"μάρκα μοντέλο (κωδικός έκδοσης)","extras":[{"name":"περιγραφή","code":"κωδικός","value":123.45,"note":"σημείωση αν χρειάζεται"}],"packages_used":["κωδικοί πακέτων που χρησιμοποιήθηκαν"],"not_found":["κωδικοί που δεν βρέθηκαν"],"total":0}` }
     ];
 
-    const apiKey = localStorage.getItem('apikey');
-    if (!apiKey) { showApiKeyPrompt(); throw new Error('Βάλε API Key πρώτα!'); }
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο, εξηγήσεις ή σχόλια εκτός JSON. Είσαι πολύ προσεκτικός με τα packages και δεν μετράς ποτέ διπλά.', messages: [{ role: 'user', content }] })
-    });
+ const resp = await fetch('/api/analyze', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4000,
+    system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο, εξηγήσεις ή σχόλια εκτός JSON. Είσαι πολύ προσεκτικός με τα packages και δεν μετράς ποτέ διπλά.',
+    messages: [{ role: 'user', content }]
+  })
+});
 
     const d = await resp.json();
     if (d.error) throw new Error(d.error.message);
