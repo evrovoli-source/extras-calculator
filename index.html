@@ -666,10 +666,13 @@ async function runAnalysis() {
     const d = await resp.json();
     if (d.error) throw new Error(d.error.message);
     const text = d.content.map(i => i.text || '').join('');
-    // Extract JSON robustly - find first { and last }
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Το AI δεν επέστρεψε έγκυρο JSON. Δοκίμασε ξανά.');
-    const parsed = JSON.parse(jsonMatch[0]);
+    let parsed;
+  try {
+  parsed = JSON.parse(text);
+  } catch (e) {
+  console.error('AI RAW TEXT:', text);
+  throw new Error('Το AI δεν επέστρεψε καθαρό JSON. Δες Console → AI RAW TEXT.');
+  }
     currentResult = { ...parsed, date: new Date().toISOString() };
     saveToHistory(currentResult);
     renderResult(parsed, area);
