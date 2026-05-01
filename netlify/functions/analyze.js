@@ -14,7 +14,12 @@ exports.handler = async function(event) {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages })
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
+        system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο ή εξηγήσεις εκτός JSON. Δεν μετράς ποτέ διπλά extras.',
+        messages
+      })
     });
     const data = await response.json();
     return { statusCode: 200, headers, body: JSON.stringify(data) };
