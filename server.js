@@ -209,11 +209,12 @@ app.post('/api/analyze', async (req, res) => {
       ]
     });
   } catch (err) {
-    return res.status(500).json({
-      error: err.message
-    });
-  }
-});
+  console.error('SERVER ERROR:', err);
+  return res.status(500).json({
+    error: err.message,
+    stack: err.stack
+  });
+}
 
 app.use(express.static(__dirname));
 
