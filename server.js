@@ -215,7 +215,7 @@ app.post('/api/analyze', async (req, res) => {
     stack: err.stack
   });
 }
-
+]);
 app.use(express.static(__dirname));
 
 app.get('*', (req, res) => {
