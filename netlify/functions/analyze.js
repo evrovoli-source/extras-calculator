@@ -21,8 +21,8 @@ exports.handler = async function(event) {
         messages
       })
     });
-    const data = await response.json();
-    return { statusCode: 200, headers, body: JSON.stringify(data) };
+    const data = await response.text();
+    return { statusCode: response.status, headers, body: text };
   } catch (err) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
