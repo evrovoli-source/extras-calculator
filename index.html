@@ -570,109 +570,60 @@ async function runAnalysis() {
     const content = [
       { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: priceB64 } },
       { type: dataType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: dataType, data: dataB64 } },
-      { type: 'text', text: `Είσαι ειδικός στην αποτίμηση extras αυτοκινήτων για τελωνειακούς σκοπούς.
+      { type: 'text', text: `Είσαι ειδικός στην αποτίμηση extras αυτοκινήτων για τελωνειακούς σκοπούς. Έχεις δύο αρχεία:
+1. ΤΙΜΟΚΑΤΑΛΟΓΟΣ (πρώτο αρχείο): περιέχει κωδικούς extras με τιμές DLP/LLP ανά έκδοση οχήματος
+2. DATA CARD (δεύτερο αρχείο): ο εξοπλισμός του συγκεκριμένου οχήματος
 
-Έχεις δύο αρχεία:
-1. ΤΙΜΟΚΑΤΑΛΟΓΟΣ: περιέχει κωδικούς extras, τιμές, πακέτα και στήλες ανά έκδοση οχήματος.
-2. DATA CARD: περιέχει τον πραγματικό εργοστασιακό εξοπλισμό του συγκεκριμένου οχήματος.
+ΚΑΝΟΝΕΣ - ΕΦΑΡΜΟΣΕ ΟΛΟΥΣ ΑΥΣΤΗΡΑ:
 
-ΣΤΟΧΟΣ:
-Να υπολογίσεις την αξία των εργοστασιακών extras που υπάρχουν ΡΗΤΑ στη DATA CARD και είναι χρεώσιμα στον ΤΙΜΟΚΑΤΑΛΟΓΟ.
+ΚΑΝΟΝΑΣ 1 - ΕΚΔΟΣΗ ΟΧΗΜΑΤΟΣ:
+Βρες από το data card τον ακριβή κωδικό έκδοσης (π.χ. 156.912 για GLA 180d, 205.040 για C180).
+Χρησιμοποίησε ΜΟΝΟ την αντίστοιχη στήλη του τιμοκαταλόγου. Χρέωσε ΜΟΝΟ κωδικούς που υπάρχουν ρητά στη Data Card.
 
-ΚΑΝΟΝΕΣ:
+ΚΑΝΟΝΑΣ 2 - ΜΟΝΟ ΧΡΕΩΣΙΜΑ EXTRAS:
+Ένα extra έχει αξία ΜΟΝΟ αν στη στήλη της έκδοσης γράφει "l" (available at extra charge) ΚΑΙ η τιμή DLP > 0.
+Αν γράφει "S" (standard), "-" (not available), ή κενό = €0. ΜΗΝ τον χρεώνεις.
 
-1. Χρέωσε ΜΟΝΟ κωδικούς που υπάρχουν ρητά στη DATA CARD.
-Μην προσθέτεις ποτέ κωδικούς που υπάρχουν μόνο στον τιμοκατάλογο, σε περιγραφές, σε conditions, σε included lists ή σε πακέτα.
+ΚΑΝΟΝΑΣ 3 - PACKAGES / ΠΑΚΕΤΑ (ΚΡΙΣΙΜΟΣ):
+Πολλά extras περιλαμβάνονται σε πακέτα (π.χ. P27, P59, P44, P17 κλπ).
+Αν ένα extra ΠΕΡΙΛΑΜΒΑΝΕΤΑΙ (included/comprising) σε πακέτο που ήδη υπολογίζεις, ΜΗΝ το μετράς ξεχωριστά.
+Διάβασε προσεκτικά τη γραμμή "consisting of" ή "comprising" ή "included" κάθε πακέτου.
+ΠΑΡΑΔΕΙΓΜΑ: Αν υπολογίζεις P27 Style (600€) που includes κωδικό 280, τότε ο 280 μόνος του = €0.
 
-2. Βρες την ακριβή έκδοση/τύπο οχήματος από τη DATA CARD.
-Χρησιμοποίησε μόνο τη σωστή στήλη του τιμοκαταλόγου για αυτή την έκδοση.
+ΚΑΝΟΝΑΣ 4 - ΔΙΠΛΗ ΚΑΤΑΜΕΤΡΗΣΗ:
+Αν ένας κωδικός εμφανίζεται στο data card ΚΑΙ είναι included σε πακέτο που μετράς = μετράει ΜΟΝΟ μια φορά (μέσω του πακέτου).
 
-3. Ένας κωδικός μπαίνει στα charged_items μόνο αν:
-- υπάρχει ρητά στη DATA CARD
-- υπάρχει στον τιμοκατάλογο
-- στη σωστή στήλη είναι χρεώσιμο extra
-- έχει τιμή μεγαλύτερη από 0
-- δεν περιλαμβάνεται ήδη σε πακέτο που χρεώνεται
+ΚΑΝΟΝΑΣ 5 - ΕΛΕΓΞΕ ΟΛΕΣ ΤΙΣ ΣΕΛΙΔΕΣ:
+Ψάξε κάθε κωδικό σε ΟΛΕΣ τις σελίδες του τιμοκαταλόγου πριν αποφασίσεις αν είναι standard ή extra.
 
-4. Αν υπάρχει χρεώσιμο πακέτο στη DATA CARD, χρέωσε το πακέτο και μη χρεώσεις ξανά τους επιμέρους κωδικούς του.
-Ψάξε λέξεις όπως: Included, includes, comprising, consisting of, in conjunction with, i.V.m.
-Οι επιμέρους κωδικοί μπαίνουν στα excluded_items με reason "included_in_package".
+ΚΑΝΟΝΑΣ 6 - ΤΙΜΗ:
+Χρησιμοποίησε πάντα την τιμή DLP/LLP που αντιστοιχεί στη συγκεκριμένη έκδοση και συνδυασμό κωδικών.
+Αν υπάρχουν διαφορετικές τιμές "in conjunction with code X", χρησιμοποίησε την σωστή βάσει των κωδικών του οχήματος.
 
-5. Μη χρεώνεις standard ή μηδενικά:
-Αν στη σωστή στήλη γράφει S, standard, 0,00, no extra charge, free, ή δεν έχει χρέωση, βάλε τον κωδικό στα excluded_items.
+Απάντησε ΜΟΝΟ σε JSON χωρίς backticks:
+{"vehicle":"μάρκα μοντέλο (κωδικός έκδοσης)","extras":[{"name":"περιγραφή","code":"κωδικός","value":123.45,"note":"σημείωση αν χρειάζεται"}],"packages_used":["κωδικοί πακέτων που χρησιμοποιήθηκαν"],"not_found":["κωδικοί που δεν βρέθηκαν"],"total":0}` }
+    ];
 
-6. Μη μπερδεύεις παρόμοιους κωδικούς.
-889 δεν είναι ίδιο με 893.
-362 δεν είναι ίδιο με 360.
-890 δεν είναι ίδιο με 890U.
-Χρέωσε μόνο ακριβή κωδικό.
+    const apiKey = localStorage.getItem('apikey');
+    if (!apiKey) { showApiKeyPrompt(); throw new Error('Βάλε API Key πρώτα!'); }
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο, εξηγήσεις ή σχόλια εκτός JSON. Είσαι πολύ προσεκτικός με τα packages και δεν μετράς ποτέ διπλά.', messages: [{ role: 'user', content }] })
+    });
 
-7. Αν ένας κωδικός έχει πολλές τιμές ανάλογα με συνδυασμό, διάλεξε τη σωστή τιμή βάσει των κωδικών που υπάρχουν στη DATA CARD.
-
-8. Αν δεν είσαι σίγουρος, μην χρεώσεις αυθαίρετα. Βάλε τον κωδικό στα uncertain_items.
-
-9. Το αποτέλεσμα πρέπει να είναι ελεγχόμενο σαν τελωνειακή ανάλυση.
-
-Απάντησε ΜΟΝΟ με έγκυρο JSON. Χωρίς backticks. Χωρίς σχόλια. Χωρίς κείμενο εκτός JSON.
-
-Το JSON πρέπει να έχει ΑΚΡΙΒΩΣ αυτή τη μορφή:
-{
-  "vehicle": "",
-  "vehicle_type_code": "",
-  "charged_items": [],
-  "excluded_items": [],
-  "uncertain_items": [],
-  "not_found": [],
-  "packages_used": [],
-  "total": 0
-}
-
-Για κάθε item μέσα στο charged_items χρησιμοποίησε:
-{
-  "code": "",
-  "name": "",
-  "value": 0,
-  "reason": ""
-}
-
-Για κάθε item μέσα στο excluded_items χρησιμοποίησε:
-{
-  "code": "",
-  "name": "",
-  "value_if_standalone": 0,
-  "reason": "",
-  "included_in": null
-}
-
-Για κάθε item μέσα στο uncertain_items χρησιμοποίησε:
-{
-  "code": "",
-  "name": "",
-  "reason": ""
-}` }
-];
-    const resp = await fetch('/api/analyze', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
-    system: 'Είσαι ειδικός τελωνειακής αποτίμησης extras αυτοκινήτων. Απαντάς ΠΑΝΤΑ και ΜΟΝΟ με έγκυρο JSON. Ποτέ κείμενο ή εξηγήσεις εκτός JSON. Δεν μετράς ποτέ διπλά extras.',
-    messages: [{ role: 'user', content }]
-  })
-});
     const d = await resp.json();
     if (d.error) throw new Error(d.error.message);
     const text = d.content.map(i => i.text || '').join('');
-    let parsed;
-  try {
-  parsed = JSON.parse(text);
-  } catch (e) {
-  console.error('AI RAW TEXT:', text);
-  throw new Error('Το AI δεν επέστρεψε καθαρό JSON. Δες Console → AI RAW TEXT.');
-  }
+    // Extract JSON robustly - find first { and last }
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Το AI δεν επέστρεψε έγκυρο JSON. Δοκίμασε ξανά.');
+    const parsed = JSON.parse(jsonMatch[0]);
     currentResult = { ...parsed, date: new Date().toISOString() };
     saveToHistory(currentResult);
     renderResult(parsed, area);
@@ -693,11 +644,10 @@ function renderResult(data, container) {
     html += `<div class="vehicle-badge"><div class="dot"></div>${data.vehicle}</div>`;
   }
 
-  const extras = data.charged_items || data.extras || [];
-  if (extras.length > 0) {
+  if (data.extras && data.extras.length > 0) {
     html += `<table class="extras-table">
       <thead><tr><th>Extra</th><th>Κωδικός</th><th>Αξία</th></tr></thead><tbody>`;
-    extras.forEach(e => {
+    data.extras.forEach(e => {
       html += `<tr>
         <td>${e.name}</td>
         <td class="code-cell">${e.code || '—'}</td>
