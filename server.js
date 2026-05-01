@@ -11,105 +11,40 @@ function extractJson(text) {
   return JSON.parse(match[0]);
 }
 
-function normalizeCode(code) {
-  return String(code || '').trim().toUpperCase();
-}
-
 function normalizeResult(result) {
   const charged = result.charged_items || result.extras || [];
   const excluded = result.excluded_items || [];
   const uncertain = result.uncertain_items || [];
 
-  const datacardCodes = new Set(
-    (result.datacard_codes || [])
-      .map(normalizeCode)
-      .filter(Boolean)
-  );
-
   const seen = new Set();
-  const rejected = [...excluded];
 
-  let cleanCharged = charged
+  const cleanCharged = charged
     .filter(item => item && item.code)
     .map(item => ({
-      code: normalizeCode(item.code),
+      code: String(item.code).trim(),
       name: item.name || item.description || '',
       value: Number(item.value || 0),
       reason: item.reason || item.note || ''
     }))
     .filter(item => {
-      if (!item.code) return false;
-
-      if (seen.has(item.code)) {
-        rejected.push({
-          code: item.code,
-          name: item.name,
-          value_if_standalone: item.value,
-          reason: 'duplicate_code',
-          included_in: null
-        });
-        return false;
-      }
-
+      if (seen.has(item.code)) return false;
       seen.add(item.code);
-
-      if (item.value <= 0) {
-        rejected.push({
-          code: item.code,
-          name: item.name,
-          value_if_standalone: item.value,
-          reason: 'zero_or_invalid_price',
-          included_in: null
-        });
-        return false;
-      }
-
-      return true;
+      return item.value > 0;
     });
 
-  // ΚΡΙΣΙΜΟΣ ΚΑΝΟΝΑΣ:
-  // Αν το AI έδωσε datacard_codes, χρεώνουμε ΜΟΝΟ κωδικούς που υπάρχουν εκεί.
-  if (datacardCodes.size > 0) {
-    cleanCharged = cleanCharged.filter(item => {
-      if (!datacardCodes.has(item.code)) {
-        rejected.push({
-          code: item.code,
-          name: item.name,
-          value_if_standalone: item.value,
-          reason: 'not_explicitly_in_datacard',
-          included_in: null
-        });
-        return false;
-      }
-      return true;
-    });
-  }
-
-  // Αν κάτι είναι ήδη στα excluded_items, δεν χρεώνεται.
   const excludedCodes = new Set(
-    rejected
+    excluded
       .filter(item => item && item.code)
-      .map(item => normalizeCode(item.code))
+      .map(item => String(item.code).trim())
   );
 
-  let finalCharged = cleanCharged.filter(item => !excludedCodes.has(item.code));
-
-  // Γενικό package filter:
-  // Αν το AI δηλώσει included_in για κάποιο excluded item, ο server το αφαιρεί οπωσδήποτε.
-  const includedByPackageCodes = new Set(
-    rejected
-      .filter(item => item && item.reason === 'included_in_package' && item.code)
-      .map(item => normalizeCode(item.code))
-  );
-
-  finalCharged = finalCharged.filter(item => !includedByPackageCodes.has(item.code));
+  const finalCharged = cleanCharged.filter(item => !excludedCodes.has(item.code));
 
   const total = finalCharged.reduce((sum, item) => sum + Number(item.value || 0), 0);
 
   return {
     vehicle: result.vehicle || '',
     vehicle_type_code: result.vehicle_type_code || '',
-    datacard_codes: Array.from(datacardCodes),
     extras: finalCharged.map(item => ({
       name: item.name,
       code: item.code,
@@ -117,7 +52,7 @@ function normalizeResult(result) {
       note: item.reason
     })),
     charged_items: finalCharged,
-    excluded_items: rejected,
+    excluded_items: excluded,
     uncertain_items: uncertain,
     packages_used: result.packages_used || [],
     not_found: result.not_found || [],
@@ -129,27 +64,13 @@ function addServerInstructions(body) {
   const extraInstruction = {
     type: 'text',
     text: `
-ΤΕΛΙΚΗ ΟΔΗΓΙΑ SERVER - ΥΠΟΧΡΕΩΤΙΚΗ:
-
+ΤΕΛΙΚΗ ΟΔΗΓΙΑ SERVER:
 Επέστρεψε ΜΟΝΟ ένα JSON object.
 Μην γράψεις markdown, backticks, σχόλια ή εξηγήσεις.
 
-ΥΠΟΧΡΕΩΤΙΚΑ επέστρεψε πεδίο:
-"datacard_codes": []
-
-Το datacard_codes πρέπει να περιέχει ΟΛΟΥΣ τους κωδικούς εξοπλισμού που υπάρχουν ΡΗΤΑ στη DATA CARD, όπως 218, P27, P49, 890U, U59 κλπ.
-
-ΚΡΙΣΙΜΟ:
-Μην χρεώσεις κανέναν κωδικό που δεν υπάρχει ρητά στο datacard_codes.
-Αν ένας κωδικός υπάρχει μόνο στον τιμοκατάλογο, μόνο σε condition, μόνο σε included list ή μόνο σε περιγραφή πακέτου, ΔΕΝ χρεώνεται.
-
-Αν ένα package υπάρχει στη datacard και χρεώνεται, τότε οι κωδικοί που περιλαμβάνει δεν χρεώνονται ξανά.
-Αυτοί μπαίνουν στο excluded_items με:
-reason: "included_in_package"
-included_in: "κωδικός πακέτου"
-
-Το total πρέπει να είναι άθροισμα ΜΟΝΟ των charged_items.
-Αν δεν είσαι σίγουρος για κωδικό, βάλ' τον στα uncertain_items και ΜΗΝ τον χρεώσεις.
+Το total πρέπει να είναι άθροισμα ΜΟΝΟ των charged_items/extras.
+Αν ένας κωδικός είναι included σε πακέτο, ΜΗΝ τον βάλεις στα charged_items.
+Αν δεν είσαι σίγουρος, βάλ' τον στα uncertain_items και ΜΗΝ τον χρεώσεις.
 `
   };
 
@@ -192,7 +113,6 @@ app.post('/api/analyze', async (req, res) => {
     }
 
     const anthropicResponse = JSON.parse(raw);
-
     const aiText = (anthropicResponse.content || [])
       .map(part => part.text || '')
       .join('');
@@ -208,14 +128,14 @@ app.post('/api/analyze', async (req, res) => {
         }
       ]
     });
+
   } catch (err) {
-  console.error('SERVER ERROR:', err);
-  return res.status(500).json({
-    error: err.message,
-    stack: err.stack
-  });
-}
-]);
+    return res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
 app.use(express.static(__dirname));
 
 app.get('*', (req, res) => {
